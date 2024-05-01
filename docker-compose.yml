@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+
+  loltimeflashbackend:
+    container_name: loltimeflashbackend
+    build:
+      context: . 
+      dockerfile: ./Dockerfile  
+    ports:
+      - "3001:3001"
+    networks:
+      - netloltimeflash
+
+volumes:
+  loltimeflashbackdata:
+networks:
+  netloltimeflash:
+    name: netloltimeflash
+    external: true
