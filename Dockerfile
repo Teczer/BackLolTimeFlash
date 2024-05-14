@@ -11,8 +11,5 @@ COPY ./ /usr/app
 # Install dependencies
 RUN pnpm install
 
-# Exposez le port nécessaire pour l'application backend
-EXPOSE 3001
-
 # Démarrer l'application backend
 CMD ["pnpm", "start"]

@@ -4,11 +4,12 @@ services:
 
   loltimeflashbackend:
     container_name: loltimeflashbackend
+    env_file: ./.env
     build:
       context: . 
       dockerfile: ./Dockerfile  
     ports:
-      - "3001:3001"
+      - "${PORT}:${PORT}"
     networks:
       - netloltimeflash
 

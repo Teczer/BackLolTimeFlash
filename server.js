@@ -1,6 +1,33 @@
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
+import { config } from "./config/index.js";
+
+// class Timer {
+//   constructor(value) {
+//     this.timer = value;
+//     this.started = false;
+//   }
+//   update() {
+//     // Timer value is of the following format
+//     // HH:mm:ss
+//     let ss = this.timer.split(":");
+//     let dt = new Date();
+//     dt.setHours(ss[0]);
+//     dt.setMinutes(ss[1]);
+//     dt.setSeconds(ss[2]);
+
+//     let newDate = new Date(dt.valueOf() - 1000);
+//     if (
+//       !newDate.getHours == 0 ||
+//       !newDate.getMinutes == 0 ||
+//       !newDate.getSeconds == 0
+//     ) {
+//       var ts = newDate.toTimeString().split(" ")[0];
+//       this.timer = ts;
+//     }
+//   }
+// }
 
 const app = express();
 const server = http.createServer(app);
@@ -41,6 +68,10 @@ let summonersData = {
   },
 };
 
+// // 2.
+// let timer = new Timer("00:05:00");
+// let interval;
+
 // Configuration des événements Socket.io
 io.on("connection", (socket) => {
   console.log("Nouvelle connexion :", socket.id);
@@ -71,6 +102,6 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(3001, () => {
-  console.log("✔️ Server listening on port 3001");
+server.listen(config.PORT, () => {
+  console.log(`✔️ Server listening on port ${config.PORT}`);
 });
