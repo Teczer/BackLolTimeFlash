@@ -1,35 +1,9 @@
-import express from "express";
+import fastify from "fastify";
 import http from "http";
 import { Server } from "socket.io";
 import { config } from "./config/index.js";
 
-// class Timer {
-//   constructor(value) {
-//     this.timer = value;
-//     this.started = false;
-//   }
-//   update() {
-//     // Timer value is of the following format
-//     // HH:mm:ss
-//     let ss = this.timer.split(":");
-//     let dt = new Date();
-//     dt.setHours(ss[0]);
-//     dt.setMinutes(ss[1]);
-//     dt.setSeconds(ss[2]);
-
-//     let newDate = new Date(dt.valueOf() - 1000);
-//     if (
-//       !newDate.getHours == 0 ||
-//       !newDate.getMinutes == 0 ||
-//       !newDate.getSeconds == 0
-//     ) {
-//       var ts = newDate.toTimeString().split(" ")[0];
-//       this.timer = ts;
-//     }
-//   }
-// }
-
-const app = express();
+const app = fastify();
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -40,65 +14,123 @@ const io = new Server(server, {
 
 let summonersData = {
   defaultServer: {
-    TOP: {
-      isFlashed: false,
-      lucidityBoots: false,
-      cosmicInsight: false,
-    },
-    JUNGLE: {
-      isFlashed: false,
-      lucidityBoots: false,
-      cosmicInsight: false,
-    },
-    MID: {
-      isFlashed: false,
-      lucidityBoots: false,
-      cosmicInsight: false,
-    },
-    SUPPORT: {
-      isFlashed: false,
-      lucidityBoots: false,
-      cosmicInsight: false,
-    },
-    ADC: {
-      isFlashed: false,
-      lucidityBoots: false,
-      cosmicInsight: false,
+    users: ["Default"],
+    roles: {
+      TOP: {
+        isFlashed: false,
+        lucidityBoots: false,
+        cosmicInsight: false,
+      },
+      JUNGLE: {
+        isFlashed: false,
+        lucidityBoots: false,
+        cosmicInsight: false,
+      },
+      MID: {
+        isFlashed: false,
+        lucidityBoots: false,
+        cosmicInsight: false,
+      },
+      SUPPORT: {
+        isFlashed: false,
+        lucidityBoots: false,
+        cosmicInsight: false,
+      },
+      ADC: {
+        isFlashed: false,
+        lucidityBoots: false,
+        cosmicInsight: false,
+      },
     },
   },
 };
-
-// // 2.
-// let timer = new Timer("00:05:00");
-// let interval;
 
 // Configuration des événements Socket.io
 io.on("connection", (socket) => {
   console.log("Nouvelle connexion :", socket.id);
 
-  socket.on("join-room", (room) => {
-    socket.emit("get-summoners-data", room);
-    socket.join(room);
+  socket.on("join-room", (room, username) => {
+    try {
+      socket.join(room);
+      socket.username = username; // Stocker le nom d'utilisateur dans l'objet socket
+
+      if (!summonersData[room]) {
+        summonersData[room] = { ...summonersData.defaultServer, users: [] };
+      }
+      if (!summonersData[room].users.includes(username)) {
+        summonersData[room].users.push(username);
+        console.log(`Utilisateur ${username} ajouté à la salle ${room}`);
+      } else {
+        console.log(
+          `L'utilisateur ${username} existe déjà dans la salle ${room}.`
+        );
+      }
+      io.in(room).emit("updateSummonerData", summonersData[room]);
+      socket.emit("joined-room", room); // Confirmer que l'utilisateur a rejoint la salle
+    } catch (error) {
+      console.error(
+        `Erreur lors de l'ajout de l'utilisateur ${username} à la salle ${room}: ${error}`
+      );
+    }
   });
 
   socket.on("disconnecting", () => {
-    console.log(socket.rooms); // the Set contains at least the socket ID
-    console.log(socket.rooms.size); // the Set contains at least the socket ID
+    const rooms = Array.from(socket.rooms);
+    console.log(
+      `L'utilisateur ${
+        socket.username
+      } se déconnecte, salles associées: ${rooms.join(", ")}`
+    );
+
+    // Le premier élément de rooms est l'ID du socket, donc on l'ignore
+    rooms.shift();
+
+    rooms.forEach((room) => {
+      if (summonersData[room]) {
+        console.log(
+          `Avant suppression, utilisateurs dans la salle ${room}: ${summonersData[
+            room
+          ].users.join(", ")}`
+        );
+
+        // Supprimer l'utilisateur de la liste des utilisateurs de la salle
+        const index = summonersData[room].users.indexOf(socket.username);
+        if (index !== -1) {
+          summonersData[room].users.splice(index, 1);
+          console.log(
+            `Après suppression, utilisateurs dans la salle ${room}: ${summonersData[
+              room
+            ].users.join(", ")}`
+          );
+
+          // Envoyer les données mises à jour à tous dans la salle
+          io.in(room).emit("updateSummonerData", summonersData[room]);
+        } else {
+          console.log(
+            `L'utilisateur ${socket.username} n'a pas été trouvé dans la salle ${room}.`
+          );
+        }
+      } else {
+        console.log(`La salle ${room} n'existe pas ou n'a pas de données.`);
+      }
+    });
   });
 
-  // Gestion de l'événement "get-summoners-data"
   socket.on("get-summoners-data", (room) => {
     // Émission des données des invocateurs au client
     socket.emit("updateSummonerData", summonersData[room], room);
   });
 
-  // Gestion de l'événement "updateSummonerData"
   socket.on("updateSummonerData", (data, room) => {
     summonersData = {
       ...summonersData,
       [room]: data,
     };
     socket.in(room).emit("updateSummonerData", summonersData[room]);
+  });
+
+  socket.on("show-toast", (role, room) => {
+    io.in(room).emit("send-toast", { role }); // Cela enverra à tous dans la salle
   });
 });
 
